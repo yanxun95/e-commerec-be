@@ -2,9 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import { createServer } from "http";
 import listEndpoints from "express-list-endpoints";
-
-console.log("hello");
-const app = express();
+import app from "./app";
 const httpServer = createServer(app);
 const port = process.env.PORT || 3001;
 
