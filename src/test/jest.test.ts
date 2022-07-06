@@ -43,7 +43,7 @@ describe("personModel Testing", () => {
     }) as unknown as string,
     password: faker.internet.password(5),
     gender: faker.name.gender(),
-    email: faker.internet.email(),
+    email: "testEmail@gmail.com",
     address: faker.address.cityName(),
     image: faker.image.avatar(),
     googleId: faker.database.mongodbObjectId(),

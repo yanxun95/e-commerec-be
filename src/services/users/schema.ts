@@ -1,9 +1,8 @@
-import mongoose, { InferSchemaType } from "mongoose";
+import mongoose, { Schema, model, Model, ObjectId } from "mongoose";
 import bcrypt from "bcrypt";
 
-const { Schema, model } = mongoose;
-
 export interface IUser {
+  _id?: ObjectId;
   firstName: string;
   lastName: string;
   dob: string;
@@ -15,7 +14,11 @@ export interface IUser {
   googleId: string;
 }
 
-const userSchema = new Schema(
+interface UserModel extends Model<IUser> {
+  checkCredentials(email: string, plainPW: string): IUser | null;
+}
+
+const userSchema = new Schema<IUser, UserModel>(
   {
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
@@ -55,6 +58,16 @@ userSchema.methods.toJSON = function () {
   return userObject;
 };
 
-type User = InferSchemaType<typeof userSchema>;
+userSchema.static(
+  "checkCredentials",
+  async function checkCredentials(email, plainPW) {
+    const user = await this.findOne({ email });
 
-export default model("user", userSchema);
+    if (user) {
+      const isMatch = await bcrypt.compare(plainPW, user.password);
+      if (isMatch) return user;
+      else return null; // if the pw is not ok I'm returning null
+    } else return null; // if the email is not ok I'm returning null as well
+  }
+);
+export default model<IUser, UserModel>("user", userSchema);
