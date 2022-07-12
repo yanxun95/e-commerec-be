@@ -1,22 +1,14 @@
 import supertest from "supertest";
-import dotenv from "dotenv";
-import mongoose from "mongoose";
 import app from "../app";
-import { MongoClient } from "mongodb";
 import {
   connectDBForTesting,
   disconnectDBForTesting,
 } from "./connectDBForTesting";
 import userSchema, { IUser } from "../services/users/schema";
 import { faker } from "@faker-js/faker";
+import { v2 as cloudinary } from "cloudinary";
 
 const request = supertest(app);
-
-describe("Testing the testing environment", () => {
-  it("should test that true is true", () => {
-    expect(true).toBe(true);
-  });
-});
 
 describe("personModel Testing", () => {
   beforeAll(async () => {
@@ -36,12 +28,8 @@ describe("personModel Testing", () => {
   const userDetails: IUser = {
     firstName: faker.name.firstName(),
     lastName: faker.name.lastName(),
-    dob: faker.date.birthdate({
-      min: 18,
-      max: 80,
-      mode: "age",
-    }) as unknown as string,
-    password: faker.internet.password(5),
+    dob: "21/3/1995",
+    password: "testPassword123",
     gender: faker.name.gender(),
     email: "testEmail@gmail.com",
     address: faker.address.cityName(),
@@ -49,9 +37,66 @@ describe("personModel Testing", () => {
     googleId: faker.database.mongodbObjectId(),
   };
 
+  let userId: string;
+
   it("register new user", async () => {
     const response = await request.post("/user/register").send(userDetails);
+    userId = response.text;
     expect(response.status).toBe(201);
-    // expect(response.body.messge).toBe({=});
+  });
+
+  const userLogin = {
+    email: "testEmail@gmail.com",
+    password: "testPassword123",
+  };
+
+  let token: string;
+
+  it("user login", async () => {
+    const response = await request.post("/user/login").send(userLogin);
+    token = response.text;
+    expect(response.status).toBe(200);
+    expect(typeof token).toBe("string");
+  });
+
+  const editUser: IUser = {
+    dob: "25/5/2000",
+  };
+
+  it("edit user", async () => {
+    const url = `/user/${userId}`;
+    const newUrl = url
+      .split("")
+      .filter((word) => word !== '"')
+      .join("");
+    const response = await request
+      .put(newUrl)
+      .auth(token, { type: "bearer" })
+      .send(editUser);
+    expect(response.status).toBe(200);
+  });
+
+  const testImage = Buffer.from("face_co_rmc4ey.png");
+  const imgPath = __dirname + "/face_co_rmc4ey.png";
+
+  it("post picture", async () => {
+    const url = `/user/${userId}/userImage`;
+    const newUrl = url
+      .split("")
+      .filter((word) => word !== '"')
+      .join("");
+    const response = await request
+      .post(newUrl)
+      .auth(token, { type: "bearer" })
+      // .set("content-type", "application/octet-stream")
+      .attach("userImg", imgPath);
+    let imageId = response.text
+      .split(",")[7]
+      .split("/")
+      .slice(7, 10)
+      .join("/")
+      .split(".")[0] as string;
+    await cloudinary.uploader.destroy(imageId);
+    expect(response.status).toBe(201);
   });
 });
