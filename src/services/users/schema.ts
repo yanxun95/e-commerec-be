@@ -22,22 +22,28 @@ const userSchema = new Schema<IUser, UserModel>(
   {
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
-    dob: { type: String, required: true },
+    dob: { type: String },
     password: {
       type: String,
       required: function (this: IUser) {
         return !Boolean(this.googleId);
       },
     },
-    gender: { type: String, required: true },
+    gender: { type: String },
     email: { type: String, required: true },
-    address: { type: String, required: true },
+    address: { type: String },
     image: {
       type: String,
       default:
         "https://res.cloudinary.com/dobdsx6ge/image/upload/v1644180026/MySpaceUser/userimageplaceholder_nrutpa.jpg",
     },
-    googleId: { type: String },
+    googleId: {
+      type: String,
+      required: function (this: IUser) {
+        return !Boolean(this.password);
+      },
+      default: "",
+    },
   },
   {
     timestamps: true,

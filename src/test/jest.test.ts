@@ -9,17 +9,11 @@ import { faker } from "@faker-js/faker";
 import { v2 as cloudinary } from "cloudinary";
 
 const request = supertest(app);
+beforeAll(async () => {
+  await connectDBForTesting();
+});
 
-describe("personModel Testing", () => {
-  beforeAll(async () => {
-    await connectDBForTesting();
-  });
-
-  afterAll(async () => {
-    await userSchema.collection.drop();
-    await disconnectDBForTesting();
-  });
-
+describe("User testing", () => {
   it("get all user", async () => {
     const response = await request.get("/user");
     expect(response.status).toBe(200);
@@ -28,7 +22,7 @@ describe("personModel Testing", () => {
   const userDetails: IUser = {
     firstName: faker.name.firstName(),
     lastName: faker.name.lastName(),
-    dob: "21/3/1995",
+    dob: "21/3/2000",
     password: "testPassword123",
     gender: faker.name.gender(),
     email: "testEmail@gmail.com",
@@ -99,4 +93,9 @@ describe("personModel Testing", () => {
     await cloudinary.uploader.destroy(imageId);
     expect(response.status).toBe(201);
   });
+});
+
+afterAll(async () => {
+  await userSchema.collection.drop();
+  await disconnectDBForTesting();
 });

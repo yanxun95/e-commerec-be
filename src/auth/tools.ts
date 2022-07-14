@@ -15,7 +15,7 @@ export const JWTAuthenticate = async (user: IUser) => {
   return accessToken;
 };
 
-const generateJWT = (payload: object) =>
+export const generateJWT = (payload: object) =>
   new Promise((resolve, reject) =>
     jwt.sign(
       payload,

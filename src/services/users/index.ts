@@ -5,15 +5,10 @@ import { CloudinaryStorage } from "multer-storage-cloudinary";
 import createHttpError from "http-errors";
 import { JWTAuthenticate, JWTAuthMiddleware } from "../../auth/tools";
 import multer from "multer";
+import passport from "passport";
+import { deleteImg } from "../function";
 
 const userRouter = express.Router();
-
-// cloudinary.config({
-//   cloud_name: "E-commerec/UserImages",
-//   api_key: process.env.CLOUDINARY_KEY,
-//   api_secret: process.env.CLOUDINARY_SECRET,
-// });
-
 const cloudStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: async (req, file) => {
@@ -113,7 +108,6 @@ userRouter.put(
   }
 );
 
-//upload the pictuer
 userRouter.post(
   "/:userId/userImage",
   JWTAuthMiddleware,
@@ -137,7 +131,6 @@ userRouter.post(
   }
 );
 
-//edit the picture
 userRouter.put(
   "/:userId/userImage",
   JWTAuthMiddleware,
@@ -147,17 +140,8 @@ userRouter.put(
       if (req.file) {
         const userId = req.params.userId;
         const userInfo = await UserModel.findById(userId);
-        if (userInfo !== null && userInfo.image !== undefined) {
-          let imageId = userInfo.image
-            .split("/")
-            .slice(7, 10)
-            .join("/")
-            .split(".")[0] as string;
-          console.log(imageId);
-          await cloudinary.uploader.destroy(imageId, function (error, result) {
-            console.log(result, error);
-          });
-        }
+        if (userInfo && userInfo.image) await deleteImg(userInfo.image);
+
         const userImage = await UserModel.findByIdAndUpdate(
           userId,
           { $set: { image: req.file.path } },
@@ -170,6 +154,21 @@ userRouter.put(
     } catch (error) {
       next(error);
     }
+  }
+);
+
+userRouter.get(
+  "/google/login",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+userRouter.get(
+  "/google/redirect",
+  passport.authenticate("google"),
+  (req, res, next) => {
+    console.log(req.user);
+    res.status(200).send(req.user);
+    // res.redirect(`http://localhost:3000?accessToken=${req.user.token}}`);
   }
 );
 
