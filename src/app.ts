@@ -14,7 +14,6 @@ import session from "express-session";
 import productRouter from "./services/products";
 
 const app = express();
-
 app.set("trust proxy", 1); // trust first proxy
 app.use(
   session({

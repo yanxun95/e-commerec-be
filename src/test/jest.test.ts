@@ -5,8 +5,14 @@ import {
   disconnectDBForTesting,
 } from "./connectDBForTesting";
 import userSchema, { IUser } from "../services/users/schema";
+import productSchema from "../services/products/schema";
 import { faker } from "@faker-js/faker";
 import { v2 as cloudinary } from "cloudinary";
+import { IProduct } from "../services/products/schema";
+import { deleteImg, convertUrl } from "../services/function";
+
+let token: string;
+let userId: string;
 
 const request = supertest(app);
 beforeAll(async () => {
@@ -31,11 +37,15 @@ describe("User testing", () => {
     googleId: faker.database.mongodbObjectId(),
   };
 
-  let userId: string;
+  let userUrl: string;
 
-  it("register new user", async () => {
+  it("new user", async () => {
     const response = await request.post("/user/register").send(userDetails);
-    userId = response.text;
+    userUrl = convertUrl("user", response.text);
+    userId = response.text
+      .split("")
+      .filter((word) => word !== '"')
+      .join("");
     expect(response.status).toBe(201);
   });
 
@@ -44,7 +54,10 @@ describe("User testing", () => {
     password: "testPassword123",
   };
 
-  let token: string;
+  it("get user by id", async () => {
+    const response = await request.get(userUrl);
+    expect(response.status).toBe(200);
+  });
 
   it("user login", async () => {
     const response = await request.post("/user/login").send(userLogin);
@@ -58,44 +71,88 @@ describe("User testing", () => {
   };
 
   it("edit user", async () => {
-    const url = `/user/${userId}`;
-    const newUrl = url
-      .split("")
-      .filter((word) => word !== '"')
-      .join("");
     const response = await request
-      .put(newUrl)
+      .put(userUrl)
       .auth(token, { type: "bearer" })
       .send(editUser);
     expect(response.status).toBe(200);
   });
 
-  const testImage = Buffer.from("face_co_rmc4ey.png");
   const imgPath = __dirname + "/face_co_rmc4ey.png";
 
   it("post picture", async () => {
-    const url = `/user/${userId}/userImage`;
-    const newUrl = url
-      .split("")
-      .filter((word) => word !== '"')
-      .join("");
+    const newUrl = `${userUrl}/userImage`;
     const response = await request
       .post(newUrl)
       .auth(token, { type: "bearer" })
-      // .set("content-type", "application/octet-stream")
       .attach("userImg", imgPath);
-    let imageId = response.text
-      .split(",")[7]
-      .split("/")
-      .slice(7, 10)
-      .join("/")
-      .split(".")[0] as string;
-    await cloudinary.uploader.destroy(imageId);
     expect(response.status).toBe(201);
+  });
+
+  it("edit picture", async () => {
+    const newUrl = `${userUrl}/userImage`;
+    const response = await request
+      .put(newUrl)
+      .auth(token, { type: "bearer" })
+      .attach("userImg", imgPath);
+    let imageId = response.text.split(",")[7];
+    await deleteImg(imageId);
+    expect(response.status).toBe(201);
+  });
+});
+
+describe("Product testing", () => {
+  it("get all product", async () => {
+    const response = await request.get("/product");
+    expect(response.status).toBe(200);
+  });
+
+  let productUrl: string;
+  const imgPath = __dirname + "/macbook-air-midnight.jpg";
+
+  it("new product", async () => {
+    const response = await request
+      .post("/product/newProduct")
+      .auth(token, { type: "bearer" })
+      .field("name", "Iphone 12")
+      .field("price", "850")
+      .field("brand", "Apple")
+      .field("description", "Product description")
+      .field("quantity", "100")
+      .field("userId", userId)
+      .attach("image", imgPath);
+    productUrl = convertUrl("product", response.text);
+    expect(response.status).toBe(201);
+  });
+
+  it("get product by id", async () => {
+    const response = await request.get(productUrl);
+    expect(response.status).toBe(200);
+  });
+
+  it("edit product", async () => {
+    const response = await request
+      .put(productUrl)
+      .auth(token, { type: "bearer" })
+      .field("name", "Iphone 12")
+      .field("price", "850")
+      .field("brand", "Apple")
+      .field("description", "Product description")
+      .field("quantity", "99")
+      .attach("image", imgPath);
+    expect(response.status).toBe(200);
+  });
+
+  it("delete product by id", async () => {
+    const response = await request
+      .delete(productUrl)
+      .auth(token, { type: "bearer" });
+    expect(response.status).toBe(204);
   });
 });
 
 afterAll(async () => {
   await userSchema.collection.drop();
+  await productSchema.collection.drop();
   await disconnectDBForTesting();
 });

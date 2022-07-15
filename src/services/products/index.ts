@@ -1,11 +1,13 @@
 import express, { Response, Request, NextFunction } from "express";
 import ProductModel, { IProduct } from "./schema";
+import UserModel from "../users/schema";
 import { v2 as cloudinary } from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import createHttpError from "http-errors";
 import multer from "multer";
 import { JWTAuthMiddleware } from "../../auth/tools";
 import { deleteImg } from "../function";
+import mongoose, { ObjectId, Schema } from "mongoose";
 
 const productRouter = express.Router();
 const cloudStorage = new CloudinaryStorage({
@@ -30,6 +32,25 @@ productRouter.get(
   }
 );
 
+productRouter.get(
+  "/:productId",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const product = await ProductModel.findById(req.params.productId);
+      if (product) res.status(200).send(product);
+      else
+        next(
+          createHttpError(
+            404,
+            `product with id ${req.params.productId} is not found`
+          )
+        );
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 productRouter.post(
   "/newProduct",
   JWTAuthMiddleware,
@@ -43,6 +64,7 @@ productRouter.post(
         image: req.file?.path as string,
         description: req.body.description as string,
         quantity: req.body.quantity,
+        userId: new mongoose.Types.ObjectId(req.body.userId),
       };
       const findProduct = await ProductModel.findOne({
         name: productDetails.name,
@@ -53,9 +75,15 @@ productRouter.post(
       } else {
         const newProduct = new ProductModel(productDetails);
         const { _id } = await newProduct.save();
+        await UserModel.findByIdAndUpdate(
+          productDetails.userId,
+          { $push: { product: _id } },
+          { new: true }
+        );
         res.status(201).send(_id as unknown as string);
       }
     } catch (error) {
+      console.log(error);
       next(error);
     }
   }
@@ -104,11 +132,18 @@ productRouter.delete(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const productId = req.params.productId;
+      const product = await ProductModel.findById(req.params.productId);
+      const productIdWithObjectTypes = productId as unknown as ObjectId;
+      const userId = product?.userId as unknown as string;
       const deletedProduct = await ProductModel.findByIdAndDelete(productId);
-
       if (deletedProduct) {
-        res.status(204).send();
+        await UserModel.findByIdAndUpdate(
+          userId,
+          { $pull: { product: productIdWithObjectTypes } },
+          { new: true }
+        );
         await deleteImg(deletedProduct.image as string);
+        res.status(204).send();
       } else {
         next(
           createHttpError(404, `Product with id ${productId} is not found `)
