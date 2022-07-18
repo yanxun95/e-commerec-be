@@ -1,5 +1,5 @@
 import express, { Response, Request, NextFunction } from "express";
-import UserModel from "./schema";
+import UserModel, { IUser } from "./schema";
 import { v2 as cloudinary } from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import createHttpError from "http-errors";
@@ -21,7 +21,7 @@ const cloudStorage = new CloudinaryStorage({
 
 userRouter.get("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = await UserModel.find().limit(100);
+    const user = await UserModel.find().limit(100).populate("product");
     res.status(200).send(user);
   } catch (error) {
     next(error);
@@ -75,7 +75,7 @@ userRouter.get(
   "/:id",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const user = await UserModel.findById(req.params.id);
+      const user = await UserModel.findById(req.params.id).populate("product");
       if (user) res.status(200).send(user);
       else
         next(
@@ -88,20 +88,15 @@ userRouter.get(
 );
 
 userRouter.put(
-  "/:id",
+  "/",
   JWTAuthMiddleware,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const updateUser = await UserModel.findByIdAndUpdate(
-        req.params.id,
-        req.body,
-        { new: true }
-      );
+      const user = req.user as IUser;
+      const updateUser = await UserModel.findByIdAndUpdate(user, req.body, {
+        new: true,
+      });
       if (updateUser) res.status(200).send(updateUser);
-      else
-        next(
-          createHttpError(404, `Profile with id ${req.params.id} is not found!`)
-        );
     } catch (error) {
       next(error);
     }
@@ -109,13 +104,13 @@ userRouter.put(
 );
 
 userRouter.post(
-  "/:userId/userImage",
+  "/userImage",
   JWTAuthMiddleware,
   multer({ storage: cloudStorage }).single("userImg"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (req.file) {
-        const userId = req.params.userId;
+        const userId = req.user as IUser;
         const userImage = await UserModel.findByIdAndUpdate(
           userId,
           { $set: { image: req.file.path } },
@@ -132,13 +127,13 @@ userRouter.post(
 );
 
 userRouter.put(
-  "/:userId/userImage",
+  "/userImage",
   JWTAuthMiddleware,
   multer({ storage: cloudStorage }).single("userImg"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (req.file) {
-        const userId = req.params.userId;
+        const userId = req.user as IUser;
         const userInfo = await UserModel.findById(userId);
         if (userInfo && userInfo.image) await deleteImg(userInfo.image);
 
@@ -148,7 +143,7 @@ userRouter.put(
           { new: true }
         );
 
-        if (userImage) res.status(201).send(userImage);
+        if (userImage) res.status(201).send(userImage.image);
         else next(createHttpError(404, "User not found!"));
       } else next(createHttpError(404, "There is no image!"));
     } catch (error) {

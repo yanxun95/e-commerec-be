@@ -10,7 +10,6 @@ interface IDecodedToken {
   exp: number;
 }
 export const JWTAuthenticate = async (user: IUser) => {
-  // given the user the function gives us back the access token
   const accessToken = await generateJWT({ _id: user._id });
   return accessToken;
 };
@@ -51,8 +50,8 @@ export const JWTAuthMiddleware = async (
       const decodedToken = (await verifyJWT(token)) as IDecodedToken;
       const user = await UserModel.findById(decodedToken._id);
       if (user) {
-        // req.user = user;
-        next();
+        req.user = user; // req if under the async
+        next(); // go to next, async funtion
       } else {
         next(createHttpError(404, "User not found!"));
       }

@@ -6,38 +6,35 @@ import {
 } from "./connectDBForTesting";
 import userSchema, { IUser } from "../services/users/schema";
 import productSchema from "../services/products/schema";
+import commentSchema, { IComment } from "../services/comments/schema";
 import { faker } from "@faker-js/faker";
-import { v2 as cloudinary } from "cloudinary";
-import { IProduct } from "../services/products/schema";
 import { deleteImg, convertUrl } from "../services/function";
+import mongoose from "mongoose";
 
-let token: string;
-let userId: string;
+let token: string,
+  userId: string,
+  productId: string,
+  commentId: string,
+  userUrl: string,
+  productUrl: string;
+const productImagePath = __dirname + "/macbook-air-midnight.jpg";
+const userImagePath = __dirname + "/face_co_rmc4ey.png";
 
 const request = supertest(app);
 beforeAll(async () => {
   await connectDBForTesting();
 });
 
-describe("User testing", () => {
-  it("get all user", async () => {
-    const response = await request.get("/user");
-    expect(response.status).toBe(200);
-  });
-
+describe("Create testing", () => {
   const userDetails: IUser = {
     firstName: faker.name.firstName(),
     lastName: faker.name.lastName(),
-    dob: "21/3/2000",
     password: "testPassword123",
-    gender: faker.name.gender(),
     email: "testEmail@gmail.com",
     address: faker.address.cityName(),
     image: faker.image.avatar(),
     googleId: faker.database.mongodbObjectId(),
   };
-
-  let userUrl: string;
 
   it("new user", async () => {
     const response = await request.post("/user/register").send(userDetails);
@@ -54,11 +51,6 @@ describe("User testing", () => {
     password: "testPassword123",
   };
 
-  it("get user by id", async () => {
-    const response = await request.get(userUrl);
-    expect(response.status).toBe(200);
-  });
-
   it("user login", async () => {
     const response = await request.post("/user/login").send(userLogin);
     token = response.text;
@@ -66,49 +58,14 @@ describe("User testing", () => {
     expect(typeof token).toBe("string");
   });
 
-  const editUser: IUser = {
-    dob: "25/5/2000",
-  };
-
-  it("edit user", async () => {
-    const response = await request
-      .put(userUrl)
-      .auth(token, { type: "bearer" })
-      .send(editUser);
-    expect(response.status).toBe(200);
-  });
-
-  const imgPath = __dirname + "/face_co_rmc4ey.png";
-
   it("post picture", async () => {
-    const newUrl = `${userUrl}/userImage`;
+    const newUrl = `/user/userImage`;
     const response = await request
       .post(newUrl)
       .auth(token, { type: "bearer" })
-      .attach("userImg", imgPath);
+      .attach("userImg", userImagePath);
     expect(response.status).toBe(201);
   });
-
-  it("edit picture", async () => {
-    const newUrl = `${userUrl}/userImage`;
-    const response = await request
-      .put(newUrl)
-      .auth(token, { type: "bearer" })
-      .attach("userImg", imgPath);
-    let imageId = response.text.split(",")[7];
-    await deleteImg(imageId);
-    expect(response.status).toBe(201);
-  });
-});
-
-describe("Product testing", () => {
-  it("get all product", async () => {
-    const response = await request.get("/product");
-    expect(response.status).toBe(200);
-  });
-
-  let productUrl: string;
-  const imgPath = __dirname + "/macbook-air-midnight.jpg";
 
   it("new product", async () => {
     const response = await request
@@ -120,14 +77,49 @@ describe("Product testing", () => {
       .field("description", "Product description")
       .field("quantity", "100")
       .field("userId", userId)
-      .attach("image", imgPath);
+      .attach("image", productImagePath);
     productUrl = convertUrl("product", response.text);
+    productId = response.text;
     expect(response.status).toBe(201);
   });
 
-  it("get product by id", async () => {
-    const response = await request.get(productUrl);
+  const commentDetails: IComment = {
+    comment: faker.lorem.sentences(),
+    productId: new mongoose.Types.ObjectId(productId),
+  };
+
+  it("new comment", async () => {
+    const response = await request
+      .post("/product/comment")
+      .auth(token, { type: "bearer" })
+      .send(commentDetails);
+    commentId = response.text;
+    expect(response.status).toBe(201);
+  });
+});
+
+describe("Edit testing", () => {
+  const editUser: IUser = {
+    firstName: faker.name.firstName(),
+  };
+
+  it("edit user", async () => {
+    const response = await request
+      .put("/user/")
+      .auth(token, { type: "bearer" })
+      .send(editUser);
     expect(response.status).toBe(200);
+  });
+
+  it("edit picture", async () => {
+    const newUrl = `/user/userImage`;
+    const response = await request
+      .put(newUrl)
+      .auth(token, { type: "bearer" })
+      .attach("userImg", userImagePath);
+    let imageId = response.text;
+    await deleteImg(imageId);
+    expect(response.status).toBe(201);
   });
 
   it("edit product", async () => {
@@ -139,13 +131,59 @@ describe("Product testing", () => {
       .field("brand", "Apple")
       .field("description", "Product description")
       .field("quantity", "99")
-      .attach("image", imgPath);
+      .attach("image", productImagePath);
     expect(response.status).toBe(200);
   });
 
+  const editCommentDetails: IComment = {
+    comment: faker.lorem.sentences(),
+  };
+
+  it("edit comment", async () => {
+    let editCommentUrl = convertUrl("comment", commentId);
+    const response = await request
+      .put(`/product${editCommentUrl}`)
+      .auth(token, { type: "bearer" })
+      .send(editCommentDetails);
+    expect(response.status).toBe(201);
+  });
+});
+
+describe("Get testing", () => {
+  it("get all user", async () => {
+    const response = await request.get("/user");
+    expect(response.status).toBe(200);
+  });
+
+  it("get user by id", async () => {
+    const response = await request.get(userUrl);
+    expect(response.status).toBe(200);
+  });
+
+  it("get all product", async () => {
+    const response = await request.get("/product");
+    expect(response.status).toBe(200);
+  });
+
+  it("get product by id", async () => {
+    const response = await request.get(productUrl);
+    expect(response.status).toBe(200);
+  });
+});
+
+describe("delete testing", () => {
   it("delete product by id", async () => {
     const response = await request
       .delete(productUrl)
+      .auth(token, { type: "bearer" })
+      .field("userId", userId);
+    expect(response.status).toBe(204);
+  });
+
+  it("delete comment", async () => {
+    let editCommentUrl = convertUrl("comment", commentId);
+    const response = await request
+      .delete(`/product${editCommentUrl}`)
       .auth(token, { type: "bearer" });
     expect(response.status).toBe(204);
   });
@@ -154,5 +192,6 @@ describe("Product testing", () => {
 afterAll(async () => {
   await userSchema.collection.drop();
   await productSchema.collection.drop();
+  await commentSchema.collection.drop();
   await disconnectDBForTesting();
 });

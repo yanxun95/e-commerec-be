@@ -1,3 +1,4 @@
+import { compare } from "bcrypt";
 import { Schema, model, ObjectId, Types } from "mongoose";
 
 export interface IProduct {
@@ -9,7 +10,7 @@ export interface IProduct {
   description?: string;
   quantity?: string;
   userId?: Types.ObjectId;
-  comment?: Array<string>;
+  comment?: Array<ObjectId>;
 }
 
 const productSchema = new Schema<IProduct>(
@@ -20,7 +21,7 @@ const productSchema = new Schema<IProduct>(
     image: { type: String, required: true },
     description: { type: String, required: true },
     quantity: { type: String, required: true },
-    comment: { type: String },
+    comment: { type: Schema.Types.ObjectId, ref: "comment" },
     userId: { type: Schema.Types.ObjectId, ref: "user", required: true },
   },
   {
@@ -32,7 +33,10 @@ productSchema.methods.toJSON = function () {
   const productDocument = this;
   const productObject = productDocument.toObject();
   delete productObject.__v;
-
+  if (Object.keys(productObject).length > 10) {
+    delete productObject.comment.__v;
+    delete productObject.comment.updateAt;
+  }
   return productObject;
 };
 

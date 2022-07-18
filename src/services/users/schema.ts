@@ -5,9 +5,7 @@ export interface IUser {
   _id?: ObjectId;
   firstName?: string;
   lastName?: string;
-  dob?: string;
   password?: string;
-  gender?: string;
   email?: string;
   address?: string;
   image?: string;
@@ -23,14 +21,12 @@ const userSchema = new Schema<IUser, UserModel>(
   {
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
-    dob: { type: String },
     password: {
       type: String,
       required: function (this: IUser) {
         return !Boolean(this.googleId);
       },
     },
-    gender: { type: String },
     email: { type: String, required: true },
     address: { type: String },
     image: {
@@ -38,13 +34,16 @@ const userSchema = new Schema<IUser, UserModel>(
       default:
         "https://res.cloudinary.com/dobdsx6ge/image/upload/v1644180026/MySpaceUser/userimageplaceholder_nrutpa.jpg",
     },
-    product: { type: Schema.Types.ObjectId, ref: "products" },
+    product: {
+      type: [Schema.Types.ObjectId],
+      ref: "product",
+      default: undefined,
+    },
     googleId: {
       type: String,
       required: function (this: IUser) {
         return !Boolean(this.password);
       },
-      default: "",
     },
   },
   {
@@ -67,6 +66,13 @@ userSchema.methods.toJSON = function () {
   const userObject = userDocument.toObject();
   delete userObject.password;
   delete userObject.__v;
+  // console.log(Object.keys(userObject).length);
+  // console.log(userObject.firstName);
+
+  // delete userObject.product.userId;
+  // delete userObject.product.updateAt;
+  // delete userObject.product.__v;
+  // delete userObject.product.comment;
 
   return userObject;
 };
