@@ -17,3 +17,11 @@ export const convertUrl = (title: string, id: string) => {
     .join("");
   return newUrl as string;
 };
+
+export class MyError extends Error {
+  status: number;
+  constructor(data: { message: string; status: number }) {
+    super(data.message);
+    this.status = data.status;
+  }
+}
