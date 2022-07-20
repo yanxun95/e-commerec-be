@@ -9,7 +9,6 @@ export interface IUser {
   email?: string;
   address?: string;
   image?: string;
-  product?: Array<ObjectId>;
   googleId?: string;
 }
 
@@ -33,11 +32,6 @@ const userSchema = new Schema<IUser, UserModel>(
       type: String,
       default:
         "https://res.cloudinary.com/dobdsx6ge/image/upload/v1644180026/MySpaceUser/userimageplaceholder_nrutpa.jpg",
-    },
-    product: {
-      type: [Schema.Types.ObjectId],
-      ref: "product",
-      default: undefined,
     },
     googleId: {
       type: String,

@@ -35,7 +35,7 @@ userRouter.post(
       const { email } = req.body;
       const findEmail = await UserModel.findOne({ email });
       if (findEmail) {
-        res.status(200).send("The email is already exist!");
+        res.status(409).send("The email is already exist!");
       } else {
         const newUser = new UserModel(req.body);
         const { _id } = await newUser.save();
@@ -59,9 +59,9 @@ userRouter.post(
         res
           .status(200)
           .cookie("accessToken", accessToken, {
-            httpOnly: false,
+            httpOnly: true,
           })
-          .send(accessToken);
+          .send(user);
       } else {
         next(createHttpError(401, "Credentials are not ok!"));
       }

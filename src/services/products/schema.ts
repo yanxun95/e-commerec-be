@@ -9,7 +9,6 @@ export interface IProduct {
   image?: string;
   description?: string;
   quantity?: string;
-  userId?: Types.ObjectId;
   comment?: Array<ObjectId>;
 }
 
@@ -22,7 +21,6 @@ const productSchema = new Schema<IProduct>(
     description: { type: String, required: true },
     quantity: { type: String, required: true },
     comment: { type: Schema.Types.ObjectId, ref: "comment" },
-    userId: { type: Schema.Types.ObjectId, ref: "user", required: true },
   },
   {
     timestamps: true,

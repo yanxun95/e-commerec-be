@@ -53,7 +53,7 @@ describe("Create testing", () => {
 
   it("user login", async () => {
     const response = await request.post("/user/login").send(userLogin);
-    token = response.text;
+    token = response.headers["set-cookie"][0].split(";")[0].split("=")[1];
     expect(response.status).toBe(200);
     expect(typeof token).toBe("string");
   });

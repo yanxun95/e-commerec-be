@@ -60,10 +60,6 @@ productRouter.post(
   multer({ storage: cloudStorage }).single("image"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const user = req.user as IUser;
-      let userId: string = "";
-      if (user !== undefined && user._id !== undefined)
-        userId = user._id.toString() as string;
       const productDetails: IProduct = {
         name: req.body.name as string,
         brand: req.body.brand as string,
@@ -71,7 +67,6 @@ productRouter.post(
         image: req.file?.path as string,
         description: req.body.description as string,
         quantity: req.body.quantity,
-        userId: new mongoose.Types.ObjectId(userId),
       };
       const findProduct = await ProductModel.findOne({
         name: productDetails.name,
@@ -82,11 +77,6 @@ productRouter.post(
       } else {
         const newProduct = new ProductModel(productDetails);
         const { _id } = await newProduct.save();
-        await UserModel.findByIdAndUpdate(
-          userId,
-          { $push: { product: _id } },
-          { new: true }
-        );
         res.status(201).send(_id as unknown as string);
       }
     } catch (error) {
@@ -140,18 +130,8 @@ productRouter.delete(
     try {
       const productId = req.params.productId;
       const productIdWithObjectTypes = productId as unknown as ObjectId;
-      const user = req.user as IUser;
-      let userId: string = "";
-      if (user !== undefined && user._id !== undefined)
-        userId = user._id.toString() as string;
-
       const deletedProduct = await ProductModel.findByIdAndDelete(productId);
       if (deletedProduct) {
-        await UserModel.findByIdAndUpdate(
-          userId,
-          { $pull: { product: productIdWithObjectTypes } },
-          { new: true }
-        );
         await deleteImg(deletedProduct.image as string);
         res.status(204).send();
       } else {
@@ -202,7 +182,6 @@ productRouter.put(
       let userId: string = "";
       if (user !== undefined && user._id !== undefined)
         userId = user._id.toString() as string;
-
       const commentId = req.params.commentId;
       const checkUser = await CommentModel.findById(commentId);
       if (checkUser) {

@@ -13,10 +13,11 @@ import cors from "cors";
 import session from "express-session";
 import productRouter from "./services/products";
 import { MyError } from "./services/function";
+import cookieParser from "cookie-parser";
 
 const app = express();
 
-const whiteList = ["http://localhost:3000"];
+const whiteList = ["http://localhost:3000", "http://localhost:3001"];
 const corsOptions = {
   origin: (
     origin: string,
@@ -32,19 +33,22 @@ const corsOptions = {
       callback(error, false);
     }
   },
+  credentials: true,
 };
 
-app.set("trust proxy", 1); // trust first proxy
+// app.set("trust proxy", 1); // trust first proxy
 app.use(
   session({
     secret: process.env.COOKIE_KEY as string,
     saveUninitialized: true,
     resave: true,
-    cookie: { secure: true },
+    cookie: { secure: false },
   })
 );
 //MIDDLEWARES
+app.use(cookieParser());
 passport.use("google", googleStrategy);
+// app.use(cors());
 app.use(cors(corsOptions as any));
 app.use(express.json());
 app.use(passport.initialize());
